@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Yatzy Pistetaulukko</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --bg: #f4f7f6;
+            --inactive: #d1d8db;
+            --active: #ffffff;
+        }
+
+        html, body { background: var(--bg); margin: 0; padding: 10px; font-family: -apple-system, sans-serif; height: 100%; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        #setup, #game-container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 600px; margin: 0 auto 20px auto; }
+        
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; color: black; }
+        
+        button { color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        #add-btn { background: var(--accent); }
+        #start-btn { width: 100%; background: #bdc3c7; margin-top: 10px; }
+        #next-round-btn { width: 100%; background: var(--accent); margin: 15px 0; font-size: 1.1rem; }
+        #reset-btn { background: #e74c3c; width: 100%; margin-top: 20px; opacity: 0.8; }
+
+        .table-wrapper { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; min-width: 350px; }
+        th, td { border: 1px solid #bbb; padding: 6px 2px; text-align: center; font-size: 14px; }
+        th { background: var(--primary); color: white; transition: background 0.2s; }
+        
+        th.active-p-header { background: #27ae60 !important; border-bottom: 3px solid #1e8449; }
+        .row-label { text-align: left; padding-left: 8px; font-weight: bold; background: #f8f9fa !important; min-width: 110px; position: sticky; left: 0; }
+        
+        .col-cell { background: var(--inactive); transition: background 0.2s; }
+        .active-col { background: var(--active) !important; }
+        
+        .score-input { width: 45px; height: 35px; text-align: center; border: 1px solid #999; border-radius: 4px; font-size: 16px; font-weight: bold; background: white; color: black; }
+        .invalid { background: #ffcccc !important; border: 2px solid red !important; }
+        
+        .total-row { background: var(--primary) !important; color: white; font-weight: bold; }
+        #history-section { border-top: 2px dashed #ccc; padding-top: 15px; margin-top: 20px; }
+        .grand-total-row { background: #d5e6ed; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align:center; color:var(--primary);">Yatzy</h2>
+
+    <div id="setup">
+        <p>Lisää pelaajat (1-6)</p>
+        <div class="input-group">
+            <input type="text" id="p-name" placeholder="Nimi" maxlength="10" onkeypress="if(event.key==='Enter') addP()">
+            <button id="add-btn" onclick="addP()">Lisää</button>
+        </div>
+        <div id="p-list" style="margin-bottom:10px; font-weight:500;">Pelaajat: -</div>
+        <button id="start-btn" onclick="start(true)" disabled>ALOITA PELI</button>
+    </div>
+
+    <div id="game-container" style="display:none;">
+        <div id="status-hint" style="text-align:center; font-weight:bold; margin-bottom:10px; color:var(--accent);">VUORO: -</div>
+        <div class="table-wrapper">
+            <table id="main-table">
+                <thead><tr id="h-row"><th class="row-label">Peli</th></tr></thead>
+                <tbody id="b-body"></tbody>
+            </table>
+        </div>
+        <button id="next-round-btn" onclick="archiveRound()">Seuraava kierros</button>
+        
+        <div id="history-section" style="display:none;">
+            <p style="text-align:center; font-weight:bold;">PISTEARKISTO</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr id="hist-header"></tr></thead>
+                    <tbody id="hist-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <button id="reset-btn" onclick="clearGame()">Nollaa peli ja historia</button>
+    </div>
+
+    <script>
+        let players = [];
+        let history = [];
+        let activePlayerIndex = 0;
+
+        const cats = [
+            { id: '1', n: 'Ykköset', m: 5 }, { id: '2', n: 'Kakkoset', m: 10 },
+            { id: '3', n: 'Kolmoset', m: 15 }, { id: '4', n: 'Neloset', m: 20 },
+            { id: '5', n: 'Viitoset', m: 25 }, { id: '6', n: 'Kuutoset', m: 30 },
+            { id: 'sum', n: 'Välisumma', r: true }, { id: 'bon', n: 'Bonus (50)', r: true },
+            { id: 'p1', n: 'Pari', min: 2, m: 12 }, { id: 'p2', n: '2 Paria', min: 6, m: 22 },
+            { id: '3k', n: '3 Samaa', min: 3, m: 18 }, { id: '4k', n: '4 Samaa', min: 4, m: 24 },
+            { id: 'ss', n: 'Pieni suora', f: [0, 15] }, { id: 'ls', n: 'Iso suora', f: [0, 20] },
+            { id: 'fh', n: 'Täyskäsi', min: 7, m: 28 }, { id: 'ch', n: 'Sattuma', min: 5, m: 30 },
+            { id: 'yz', n: 'Yatzy', f: [0, 50] }, { id: 'tot', n: 'YHTEENSÄ', r: true, c: 'total-row' }
+        ];
+
+        function addP() {
+            const el = document.getElementById('p-name');
+            const name = el.value.trim().toUpperCase();
+            if (name && players.length < 6) {
+                players.push(name);
+                el.value = '';
+                document.getElementById('p-list').innerText = "Pelaajat: " + players.join(', ');
+                const btn = document.getElementById('start-btn');
+                btn.disabled = false;
+                btn.style.background = "#2980b9";
+            }
+        }
+
+        function start(shouldSave) {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            
+            const hr = document.getElementById('h-row');
+            const bb = document.getElementById('b-body');
+            
+            hr.innerHTML = '<th class="row-label">Peli</th>' + players.map((p, i) => `<th onclick="setActive(${i})">${p}</th>`).join('');
+            
+            let html = '';
+            cats.forEach(cat => {
+                html += `<tr class="${cat.c || ''}"><td class="row-label">${cat.n}</td>`;
+                players.forEach((_, pi) => {
+                    if (cat.r) {
+                        html += `<td id="r-${cat.id}-${pi}" style="font-weight:bold; color:#2980b9;">0</td>`;
+                    } else {
+                        // Huom! inputmode="numeric" auttaa mobiililaitteita, onfocus="setActive" siirtää vihreän sarakkeen.
+                        html += `<td class="col-cell" data-p="${pi}">
+                                    <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}" 
+                                    onfocus="setActive(${pi})" oninput="calc(${pi})">
+                                 </td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            bb.innerHTML = html;
+            
+            updateUI();
+            if (shouldSave) saveGame();
+        }
+
+        function calc(pi) {
+            const inputs = document.querySelectorAll(`.score-input[data-p="${pi}"]`);
+            let upper = 0, total = 0;
+            inputs.forEach(i => {
+                const v = parseInt(i.value), isBlank = i.value === "";
+                const c = cats.find(x => x.id === i.dataset.c);
+                let ok = true;
+                if (!isBlank) {
+                    if (v < 0 || (c.m && v > c.m) || (c.min && v < c.min && v !== 0) || (c.f && !c.f.includes(v))) ok = false;
+                }
+                i.classList.toggle('invalid', !ok && !isBlank);
+                if (ok && !isBlank) {
+                    if (['1','2','3','4','5','6'].includes(c.id)) upper += v;
+                    total += v;
+                }
+            });
+            document.getElementById(`r-sum-${pi}`).innerText = upper;
+            document.getElementById(`r-bon-${pi}`).innerText = upper >= 63 ? 50 : 0;
+            document.getElementById(`r-tot-${pi}`).innerText = total + (upper >= 63 ? 50 : 0);
+            saveGame();
+        }
+
+        function archiveRound() {
+            if (document.querySelectorAll('.invalid').length > 0) {
+                alert("Korjaa punaiset virheet ensin!");
+                return;
+            }
+
+            const round = players.map((_, i) => parseInt(document.getElementById(`r-tot-${i}`).innerText) || 0);
+            history.push(round);
+            
+            document.querySelectorAll('.score-input').forEach(i => {
+                i.value = "";
+                i.classList.remove('invalid');
+            });
+            
+            players.forEach((_, i) => calc(i));
+            setActive(0); // Palautetaan vuoro takaisin ykköspelaajalle
+            renderHistory();
+            saveGame();
+        }
+
+        function renderHistory() {
+            if (history.length === 0) return;
+            document.getElementById('history-section').style.display = 'block';
+            const head = document.getElementById('hist-header');
+            const body = document.getElementById('hist-body');
+            
+            head.innerHTML = '<th class="row-label">Pelaaja</th>' + players.map(p => `<th>${p}</th>`).join('');
+            
+            let h = `<tr class="grand-total-row"><td class="row-label">SUMMA</td>`;
+            players.forEach((_, pi) => h += `<td>${history.reduce((s, r) => s + r[pi], 0)}</td>`);
+            h += '</tr>';
+            
+            history.forEach((r, i) => {
+                h += `<tr><td class="row-label">Kierros ${i+1}</td>` + r.map(s => `<td>${s}</td>`).join('') + '</tr>';
+            });
+            body.innerHTML = h;
+        }
+
+        function setActive(idx) {
+            activePlayerIndex = idx;
+            updateUI();
+        }
+
+        function updateUI() {
+            const hint = document.getElementById('status-hint');
+            if (hint && players[activePlayerIndex]) hint.innerText = "VUORO: " + players[activePlayerIndex];
+            
+            document.querySelectorAll('#h-row th').forEach((th, i) => {
+                if (i > 0) th.classList.toggle('active-p-header', (i - 1) === activePlayerIndex);
+            });
+
+            document.querySelectorAll('.col-cell').forEach(td => {
+                const active = parseInt(td.dataset.p) === activePlayerIndex;
+                td.classList.toggle('active-col', active);
+            });
+        }
+
+        function saveGame() {
+            const data = { players, history, activePlayerIndex, scores: {} };
+            document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
+            localStorage.setItem('YATZY_V16_MASTER', JSON.stringify(data));
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('YATZY_V16_MASTER');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    players = data.players || [];
+                    history = data.history || [];
+                    activePlayerIndex = data.activePlayerIndex || 0;
+                    
+                    if (players.length > 0) {
+                        start(false);
+                        Object.keys(data.scores || {}).forEach(k => {
+                            const i = document.querySelector(`input[data-c="${k.split('-')[0]}"][data-p="${k.split('-')[1]}"]`);
+                            if (i) i.value = data.scores[k];
+                        });
+                        players.forEach((_, i) => calc(i));
+                        renderHistory();
+                        updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error("Virhe ladattaessa tallennusta:", error);
+                localStorage.removeItem('YATZY_V16_MASTER'); // Nollataan rikkinäinen data
+            }
+        }
+
+        function clearGame() { if (confirm("Nollaa kaikki ja aloita täysin alusta?")) { localStorage.clear(); location.reload(); } }
+        
+        window.onload = loadGame;
+    </script>
+</body>
+</html>
