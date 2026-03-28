@@ -128,7 +128,6 @@
                     if (cat.r) {
                         html += `<td id="r-${cat.id}-${pi}" style="font-weight:bold; color:#2980b9;">0</td>`;
                     } else {
-                        // Huom! inputmode="numeric" auttaa mobiililaitteita, onfocus="setActive" siirtää vihreän sarakkeen.
                         html += `<td class="col-cell" data-p="${pi}">
                                     <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}" 
                                     onfocus="setActive(${pi})" oninput="calc(${pi})">
@@ -138,6 +137,45 @@
                 html += '</tr>';
             });
             bb.innerHTML = html;
+
+            // --- LISÄTTY AUTOMAATTINEN SIRTYMINEN ---
+            // Haetaan kaikki syöttökentät
+            const allInputs = document.querySelectorAll('.score-input');
+            allInputs.forEach(input => {
+                // Tapahtuma, kun käyttäjä lopettaa syötön ruutuun (blur = fokus poistuu)
+                input.onblur = () => {
+                    // Siirrytään vain, jos ruutuun on syötetty jotain eikä siinä ole virhettä
+                    if (input.value !== "" && !input.classList.contains('invalid')) {
+                        // Haetaan nykyisen ruudun tiedot
+                        const currentP = parseInt(input.dataset.p);
+                        const currentC = input.dataset.c;
+                        
+                        // Lasketaan seuraava pelaaja
+                        const nextP = (currentP + 1) % players.length;
+                        
+                        // Vaihdetaan visuaalinen vuoro
+                        setActive(nextP);
+                        
+                        // Etsitään seuraavan pelaajan kenttä SAMALLA RIVILLÄ
+                        const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
+                        
+                        // Pieni viive varmistaa toimivuuden iPhonella ja laptopilla
+                        if (nextInput) {
+                            setTimeout(() => {
+                                nextInput.focus();
+                            }, 50);
+                        }
+                    }
+                };
+
+                // Tuki Enter-näppäimelle: Enterin painallus laukaisee 'blur' tapahtuman yllä
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur(); // Triggers input.onblur
+                    }
+                };
+            });
+            // ----------------------------------------
             
             updateUI();
             if (shouldSave) saveGame();
