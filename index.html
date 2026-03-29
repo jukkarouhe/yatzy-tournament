@@ -33,7 +33,7 @@
         th { background: var(--primary); color: white; transition: background 0.2s; }
         
         th.active-p-header { background: #27ae60 !important; border-bottom: 3px solid #1e8449; }
-        .row-label { text-align: left; padding-left: 8px; font-weight: bold; background: #f8f9fa !important; min-width: 110px; position: sticky; left: 0; }
+        .row-label { text-align: left; padding-left: 8px; font-weight: bold; background: #f8f9fa !important; min-width: 110px; position: sticky; left: 0; z-index: 5; }
         
         .col-cell { background: var(--inactive); transition: background 0.2s; }
         .active-col { background: var(--active) !important; }
@@ -48,7 +48,7 @@
 </head>
 <body>
 
-    <h2 style="text-align:center; color:var(--primary);">Yatzy</h2>
+    <h2 style="text-align:center; color:var(--primary);">Yatzy Turnamentti</h2>
 
     <div id="setup">
         <p>Lisää pelaajat (1-6)</p>
@@ -129,8 +129,7 @@
                         html += `<td id="r-${cat.id}-${pi}" style="font-weight:bold; color:#2980b9;">0</td>`;
                     } else {
                         html += `<td class="col-cell" data-p="${pi}">
-                                    <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}" 
-                                    onfocus="setActive(${pi})" oninput="calc(${pi})">
+                                    <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}">
                                  </td>`;
                     }
                 });
@@ -138,44 +137,48 @@
             });
             bb.innerHTML = html;
 
-            // --- LISÄTTY AUTOMAATTINEN SIRTYMINEN ---
-            // Haetaan kaikki syöttökentät
+            // --- TAPAHTUMAKUUNTELIJAT (Korjattu logiikka) ---
             const allInputs = document.querySelectorAll('.score-input');
             allInputs.forEach(input => {
-                // Tapahtuma, kun käyttäjä lopettaa syötön ruutuun (blur = fokus poistuu)
-                input.onblur = () => {
-                    // Siirrytään vain, jos ruutuun on syötetty jotain eikä siinä ole virhettä
+                
+                // 1. Kun kenttää klikataan, siirretään vihreä väri ko. pelaajalle
+                input.addEventListener('focus', () => {
+                    setActive(parseInt(input.dataset.p));
+                });
+
+                // 2. Lasketaan pisteet reaaliajassa, kun numeroita näppäillään
+                input.addEventListener('input', () => {
+                    calc(parseInt(input.dataset.p));
+                });
+
+                // 3. Automaattinen siirtyminen TAPAHTUU VAIN, jos arvo oikeasti muuttuu ja syöttö hyväksytään
+                input.addEventListener('change', () => {
                     if (input.value !== "" && !input.classList.contains('invalid')) {
-                        // Haetaan nykyisen ruudun tiedot
                         const currentP = parseInt(input.dataset.p);
                         const currentC = input.dataset.c;
-                        
-                        // Lasketaan seuraava pelaaja
                         const nextP = (currentP + 1) % players.length;
                         
-                        // Vaihdetaan visuaalinen vuoro
-                        setActive(nextP);
-                        
-                        // Etsitään seuraavan pelaajan kenttä SAMALLA RIVILLÄ
                         const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
                         
-                        // Pieni viive varmistaa toimivuuden iPhonella ja laptopilla
-                        if (nextInput) {
-                            setTimeout(() => {
-                                nextInput.focus();
-                            }, 50);
+                        // Siirretään fokus seuraavalle VAIN jos seuraava ruutu on tyhjä
+                        if (nextInput && nextInput.value === "") {
+                            setActive(nextP);
+                            setTimeout(() => { nextInput.focus(); }, 50);
+                        } else {
+                            // Vaihdetaan vain vuoron ilmaisinta, mutta ei pakoteta ruutua
+                            setActive(nextP);
                         }
                     }
-                };
+                });
 
-                // Tuki Enter-näppäimelle: Enterin painallus laukaisee 'blur' tapahtuman yllä
-                input.onkeydown = (e) => {
+                // 4. Enter-näppäimen tuki (pakottaa kentän sulkeutumisen, joka laukaisee 'change' tapahtuman)
+                input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
-                        input.blur(); // Triggers input.onblur
+                        input.blur();
                     }
-                };
+                });
             });
-            // ----------------------------------------
+            // ------------------------------------------------
             
             updateUI();
             if (shouldSave) saveGame();
@@ -263,12 +266,12 @@
         function saveGame() {
             const data = { players, history, activePlayerIndex, scores: {} };
             document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
-            localStorage.setItem('YATZY_V16_MASTER', JSON.stringify(data));
+            localStorage.setItem('YATZY_V17_TURNAMENTTI', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('YATZY_V16_MASTER');
+                const saved = localStorage.getItem('YATZY_V17_TURNAMENTTI');
                 if (saved) {
                     const data = JSON.parse(saved);
                     players = data.players || [];
@@ -288,7 +291,7 @@
                 }
             } catch (error) {
                 console.error("Virhe ladattaessa tallennusta:", error);
-                localStorage.removeItem('YATZY_V16_MASTER'); // Nollataan rikkinäinen data
+                localStorage.removeItem('YATZY_V17_TURNAMENTTI');
             }
         }
 
