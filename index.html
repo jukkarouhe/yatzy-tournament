@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Yatzy Pistetaulukko</title>
+    <title>Yatzy Turnamentti</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -58,6 +58,10 @@
         </div>
         <div id="p-list" style="margin-bottom:10px; font-weight:500;">Pelaajat: -</div>
         <button id="start-btn" onclick="start(true)" disabled>ALOITA PELI</button>
+        
+        <p style="text-align: center; margin-top: 20px;">
+            <a href="https://fi.wikipedia.org/wiki/Yatzy" target="_blank" style="color: blue; text-decoration: underline;">Yatzy säännöt</a>
+        </p>
     </div>
 
     <div id="game-container" style="display:none;">
@@ -137,21 +141,16 @@
             });
             bb.innerHTML = html;
 
-            // --- TAPAHTUMAKUUNTELIJAT (Korjattu logiikka) ---
             const allInputs = document.querySelectorAll('.score-input');
             allInputs.forEach(input => {
-                
-                // 1. Kun kenttää klikataan, siirretään vihreä väri ko. pelaajalle
                 input.addEventListener('focus', () => {
                     setActive(parseInt(input.dataset.p));
                 });
 
-                // 2. Lasketaan pisteet reaaliajassa, kun numeroita näppäillään
                 input.addEventListener('input', () => {
                     calc(parseInt(input.dataset.p));
                 });
 
-                // 3. Automaattinen siirtyminen TAPAHTUU VAIN, jos arvo oikeasti muuttuu ja syöttö hyväksytään
                 input.addEventListener('change', () => {
                     if (input.value !== "" && !input.classList.contains('invalid')) {
                         const currentP = parseInt(input.dataset.p);
@@ -160,25 +159,21 @@
                         
                         const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
                         
-                        // Siirretään fokus seuraavalle VAIN jos seuraava ruutu on tyhjä
                         if (nextInput && nextInput.value === "") {
                             setActive(nextP);
                             setTimeout(() => { nextInput.focus(); }, 50);
                         } else {
-                            // Vaihdetaan vain vuoron ilmaisinta, mutta ei pakoteta ruutua
                             setActive(nextP);
                         }
                     }
                 });
 
-                // 4. Enter-näppäimen tuki (pakottaa kentän sulkeutumisen, joka laukaisee 'change' tapahtuman)
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         input.blur();
                     }
                 });
             });
-            // ------------------------------------------------
             
             updateUI();
             if (shouldSave) saveGame();
@@ -221,7 +216,7 @@
             });
             
             players.forEach((_, i) => calc(i));
-            setActive(0); // Palautetaan vuoro takaisin ykköspelaajalle
+            setActive(0); 
             renderHistory();
             saveGame();
         }
@@ -266,12 +261,12 @@
         function saveGame() {
             const data = { players, history, activePlayerIndex, scores: {} };
             document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
-            localStorage.setItem('YATZY_V17_TURNAMENTTI', JSON.stringify(data));
+            localStorage.setItem('YATZY_V18_TURNAMENTTI', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('YATZY_V17_TURNAMENTTI');
+                const saved = localStorage.getItem('YATZY_V18_TURNAMENTTI');
                 if (saved) {
                     const data = JSON.parse(saved);
                     players = data.players || [];
@@ -291,7 +286,7 @@
                 }
             } catch (error) {
                 console.error("Virhe ladattaessa tallennusta:", error);
-                localStorage.removeItem('YATZY_V17_TURNAMENTTI');
+                localStorage.removeItem('YATZY_V18_TURNAMENTTI');
             }
         }
 
