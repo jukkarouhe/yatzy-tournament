@@ -23,7 +23,6 @@
         input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; color: black; }
         
         button { color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:disabled { opacity: 0.5; }
         #add-btn { background: var(--accent); }
         #start-btn { width: 100%; background: #bdc3c7; margin-top: 10px; }
         #next-round-btn { width: 100%; background: var(--accent); margin: 15px 0; font-size: 1.1rem; }
@@ -40,7 +39,6 @@
         .col-cell { background: var(--inactive); transition: background 0.3s; }
         .active-col { background: var(--active) !important; }
         
-        /* iPhone optimoitu tekstisyöttö numeronäppäimistöllä */
         .score-input { width: 50px; height: 38px; text-align: center; border: 1px solid #999; border-radius: 4px; font-size: 18px; font-weight: bold; background: white; color: black; }
         .invalid { background: #ffcccc !important; border: 2px solid #e74c3c !important; }
         
@@ -51,7 +49,7 @@
 </head>
 <body>
 
-    <h2 style="text-align:center; color:var(--primary); margin-top: 10px;">Yatzy Turnamentti</h2>
+    <h2 style="text-align:center; color:var(--primary); margin-top: 10px;">Yatzy Turnaus</h2>
 
     <div id="setup">
         <p style="margin-top: 0;">Lisää pelaajat (1-6)</p>
@@ -61,9 +59,6 @@
         </div>
         <div id="p-list" style="margin-bottom:15px; font-weight:500; min-height: 20px;">Pelaajat: -</div>
         <button id="start-btn" onclick="start(true)" disabled>ALOITA PELI</button>
-        <p style="text-align: center; margin-top: 25px;">
-            <a href="https://fi.wikipedia.org/wiki/Yatzy" target="_blank" rel="noopener" style="color: #2980b9; text-decoration: underline; font-weight: 500;">Yatzy säännöt</a>
-        </p>
     </div>
 
     <div id="game-container" style="display:none;">
@@ -74,9 +69,9 @@
                 <tbody id="b-body"></tbody>
             </table>
         </div>
-        <button id="next-round-btn" onclick="archiveRound()">Arkistoi kierros & Nollaa</button>
+        <button id="next-round-btn" onclick="archiveRound()">Tallenna tulokset & Nollaa tulostaulu</button>
         <div id="history-section" style="display:none;">
-            <p style="text-align:center; font-weight:bold; margin-bottom: 10px;">TURNAMENTIN KOKONAISTILANNE</p>
+            <p style="text-align:center; font-weight:bold; margin-bottom: 10px;">TURNAUKSEN KOKONAISTILANNE</p>
             <div class="table-wrapper">
                 <table>
                     <thead><tr id="hist-header"></tr></thead>
@@ -91,7 +86,6 @@
         let players = [];
         let history = [];
         let activePlayerIndex = 0;
-        let isTransitioning = false; // Estää tuplahypyt iPhonella
 
         const cats = [
             { id: '1', n: 'Ykköset', m: 5 }, { id: '2', n: 'Kakkoset', m: 10 },
@@ -137,7 +131,6 @@
                                     data-p="${pi}" data-c="${cat.id}" 
                                     onfocus="setActive(${pi})" 
                                     oninput="calc(${pi})"
-                                    onkeydown="if(event.key==='Enter'){ event.preventDefault(); moveNext(this); }"
                                     onchange="moveNext(this)">
                                  </td>`;
                     }
@@ -149,27 +142,29 @@
             if (shouldSave) saveGame();
         }
 
-        // YKSI HALLITTU SIIRTYMINEN (Toimii Enterillä ja iPhonen "Done" -painikkeella)
+        // TÄMÄ LOGIIKKA ON KOPIOITU JA MUOKATTU SINGLE-VERSIOSTA
+        // iPhonen "Done" laukaisee onchange-tapahtuman.
         function moveNext(input) {
-            if (isTransitioning) return;
+            // Jos kenttä on tyhjä tai virheellinen, ei siirrytä
             if (input.value === "" || input.classList.contains('invalid')) return;
 
-            isTransitioning = true;
             const pi = parseInt(input.dataset.p);
             const currentC = input.dataset.c;
+            
+            // Turnauslogiikka: Siirrytään seuraavaan pelaajaan (oikealle)
             const nextP = (pi + 1) % players.length;
-
+            
+            // Päivitetään aktiivinen pelaaja välittömästi
             setActive(nextP);
 
+            // Haetaan seuraava syöttökenttä (saman kategorian seuraava pelaaja)
             const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
+            
             if (nextInput) {
+                // Pieni viive varmistaa, että iOS ehtii sulkea edellisen ja avata uuden fokuksen
                 setTimeout(() => {
                     nextInput.focus();
-                    isTransitioning = false;
-                }, 100);
-            } else {
-                input.blur();
-                isTransitioning = false;
+                }, 50);
             }
         }
 
@@ -198,7 +193,7 @@
 
         function archiveRound() {
             if (document.querySelectorAll('.invalid').length > 0) {
-                alert("Korjaa virheelliset pisteet!");
+                alert("Korjaa virheet!");
                 return;
             }
             const round = players.map((_, i) => parseInt(document.getElementById(`r-tot-${i}`).innerText) || 0);
@@ -245,12 +240,12 @@
         function saveGame() {
             const data = { players, history, activePlayerIndex, scores: {} };
             document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
-            localStorage.setItem('YATZY_V23_IOS', JSON.stringify(data));
+            localStorage.setItem('YATZY_V25_STABLE', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('YATZY_V23_IOS');
+                const saved = localStorage.getItem('YATZY_V25_STABLE');
                 if (saved) {
                     const data = JSON.parse(saved);
                     players = data.players || [];
