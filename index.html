@@ -133,7 +133,9 @@
                     } else {
                         html += `<td class="col-cell" data-p="${pi}">
                                     <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}" 
-                                    onfocus="setActive(${pi})" oninput="autoMove(this)">
+                                    onfocus="setActive(${pi})" 
+                                    oninput="calc(${pi})"
+                                    onkeydown="handleKeyDown(event, this)">
                                  </td>`;
                     }
                 });
@@ -145,25 +147,29 @@
             if (shouldSave) saveGame();
         }
 
-        // --- PALAUTETTU AUTOMAATTINEN SIRTYMINEN ---
-        function autoMove(input) {
-            const pi = parseInt(input.dataset.p);
-            calc(pi);
-
-            // Jos syöte on validi ja kentässä on numero, siirrytään heti
-            if (input.value !== "" && !input.classList.contains('invalid')) {
-                const nextP = (pi + 1) % players.length;
-                const currentC = input.dataset.c;
+        // --- KORJATTU TOIMINNALLISUUS: Siirto vasta Enteristä ---
+        function handleKeyDown(e, input) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Estää sivun turhan latautumisen
                 
-                // Vaihdetaan visuaalinen vuoro heti
-                setActive(nextP);
+                // Jos syöte on validi ja kentässä on numero, siirrytään
+                if (input.value !== "" && !input.classList.contains('invalid')) {
+                    const pi = parseInt(input.dataset.p);
+                    const nextP = (pi + 1) % players.length;
+                    const currentC = input.dataset.c;
+                    
+                    // Vaihdetaan visuaalinen vuoro
+                    setActive(nextP);
 
-                // Etsitään seuraavan pelaajan kenttä ja siirretään fokus
-                const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
-                if (nextInput) {
-                    setTimeout(() => {
-                        nextInput.focus();
-                    }, 100); // Lyhyt viive varmistaa vakauden mobiilissa
+                    // Etsitään seuraavan pelaajan kenttä ja siirretään fokus
+                    const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
+                    if (nextInput) {
+                        setTimeout(() => {
+                            nextInput.focus();
+                        }, 50);
+                    } else {
+                        input.blur(); // Jos ei löydy seuraavaa, poistetaan fokus
+                    }
                 }
             }
         }
@@ -242,12 +248,12 @@
         function saveGame() {
             const data = { players, history, activePlayerIndex, scores: {} };
             document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
-            localStorage.setItem('YATZY_V19_TURNAMENTTI', JSON.stringify(data));
+            localStorage.setItem('YATZY_V20_TURNAMENTTI', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('YATZY_V19_TURNAMENTTI');
+                const saved = localStorage.getItem('YATZY_V20_TURNAMENTTI');
                 if (saved) {
                     const data = JSON.parse(saved);
                     players = data.players || [];
@@ -265,7 +271,7 @@
                     }
                 }
             } catch (error) {
-                localStorage.removeItem('YATZY_V19_TURNAMENTTI');
+                localStorage.removeItem('YATZY_V20_TURNAMENTTI');
             }
         }
 
