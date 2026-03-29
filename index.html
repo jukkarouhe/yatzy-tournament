@@ -58,9 +58,8 @@
         </div>
         <div id="p-list" style="margin-bottom:10px; font-weight:500;">Pelaajat: -</div>
         <button id="start-btn" onclick="start(true)" disabled>ALOITA PELI</button>
-        
         <p style="text-align: center; margin-top: 20px;">
-            <a href="https://fi.wikipedia.org/wiki/Yatzy" target="_blank" style="color: blue; text-decoration: underline;">Yatzy säännöt</a>
+            <a href="https://fi.wikipedia.org/wiki/Yatzy" target="_blank" style="color: blue; text-decoration: underline; font-size: 16px;">Yatzy säännöt</a>
         </p>
     </div>
 
@@ -133,50 +132,40 @@
                         html += `<td id="r-${cat.id}-${pi}" style="font-weight:bold; color:#2980b9;">0</td>`;
                     } else {
                         html += `<td class="col-cell" data-p="${pi}">
-                                    <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}">
+                                    <input type="number" inputmode="numeric" class="score-input" data-p="${pi}" data-c="${cat.id}" 
+                                    onfocus="setActive(${pi})" oninput="autoMove(this)">
                                  </td>`;
                     }
                 });
                 html += '</tr>';
             });
             bb.innerHTML = html;
-
-            const allInputs = document.querySelectorAll('.score-input');
-            allInputs.forEach(input => {
-                input.addEventListener('focus', () => {
-                    setActive(parseInt(input.dataset.p));
-                });
-
-                input.addEventListener('input', () => {
-                    calc(parseInt(input.dataset.p));
-                });
-
-                input.addEventListener('change', () => {
-                    if (input.value !== "" && !input.classList.contains('invalid')) {
-                        const currentP = parseInt(input.dataset.p);
-                        const currentC = input.dataset.c;
-                        const nextP = (currentP + 1) % players.length;
-                        
-                        const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
-                        
-                        if (nextInput && nextInput.value === "") {
-                            setActive(nextP);
-                            setTimeout(() => { nextInput.focus(); }, 50);
-                        } else {
-                            setActive(nextP);
-                        }
-                    }
-                });
-
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        input.blur();
-                    }
-                });
-            });
             
             updateUI();
             if (shouldSave) saveGame();
+        }
+
+        // --- PALAUTETTU AUTOMAATTINEN SIRTYMINEN ---
+        function autoMove(input) {
+            const pi = parseInt(input.dataset.p);
+            calc(pi);
+
+            // Jos syöte on validi ja kentässä on numero, siirrytään heti
+            if (input.value !== "" && !input.classList.contains('invalid')) {
+                const nextP = (pi + 1) % players.length;
+                const currentC = input.dataset.c;
+                
+                // Vaihdetaan visuaalinen vuoro heti
+                setActive(nextP);
+
+                // Etsitään seuraavan pelaajan kenttä ja siirretään fokus
+                const nextInput = document.querySelector(`.score-input[data-p="${nextP}"][data-c="${currentC}"]`);
+                if (nextInput) {
+                    setTimeout(() => {
+                        nextInput.focus();
+                    }, 100); // Lyhyt viive varmistaa vakauden mobiilissa
+                }
+            }
         }
 
         function calc(pi) {
@@ -206,17 +195,14 @@
                 alert("Korjaa punaiset virheet ensin!");
                 return;
             }
-
             const round = players.map((_, i) => parseInt(document.getElementById(`r-tot-${i}`).innerText) || 0);
             history.push(round);
-            
             document.querySelectorAll('.score-input').forEach(i => {
                 i.value = "";
                 i.classList.remove('invalid');
             });
-            
             players.forEach((_, i) => calc(i));
-            setActive(0); 
+            setActive(0);
             renderHistory();
             saveGame();
         }
@@ -226,13 +212,10 @@
             document.getElementById('history-section').style.display = 'block';
             const head = document.getElementById('hist-header');
             const body = document.getElementById('hist-body');
-            
             head.innerHTML = '<th class="row-label">Pelaaja</th>' + players.map(p => `<th>${p}</th>`).join('');
-            
             let h = `<tr class="grand-total-row"><td class="row-label">SUMMA</td>`;
             players.forEach((_, pi) => h += `<td>${history.reduce((s, r) => s + r[pi], 0)}</td>`);
             h += '</tr>';
-            
             history.forEach((r, i) => {
                 h += `<tr><td class="row-label">Kierros ${i+1}</td>` + r.map(s => `<td>${s}</td>`).join('') + '</tr>';
             });
@@ -247,11 +230,9 @@
         function updateUI() {
             const hint = document.getElementById('status-hint');
             if (hint && players[activePlayerIndex]) hint.innerText = "VUORO: " + players[activePlayerIndex];
-            
             document.querySelectorAll('#h-row th').forEach((th, i) => {
                 if (i > 0) th.classList.toggle('active-p-header', (i - 1) === activePlayerIndex);
             });
-
             document.querySelectorAll('.col-cell').forEach(td => {
                 const active = parseInt(td.dataset.p) === activePlayerIndex;
                 td.classList.toggle('active-col', active);
@@ -261,18 +242,17 @@
         function saveGame() {
             const data = { players, history, activePlayerIndex, scores: {} };
             document.querySelectorAll('.score-input').forEach(i => data.scores[`${i.dataset.c}-${i.dataset.p}`] = i.value);
-            localStorage.setItem('YATZY_V18_TURNAMENTTI', JSON.stringify(data));
+            localStorage.setItem('YATZY_V19_TURNAMENTTI', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('YATZY_V18_TURNAMENTTI');
+                const saved = localStorage.getItem('YATZY_V19_TURNAMENTTI');
                 if (saved) {
                     const data = JSON.parse(saved);
                     players = data.players || [];
                     history = data.history || [];
                     activePlayerIndex = data.activePlayerIndex || 0;
-                    
                     if (players.length > 0) {
                         start(false);
                         Object.keys(data.scores || {}).forEach(k => {
@@ -285,13 +265,11 @@
                     }
                 }
             } catch (error) {
-                console.error("Virhe ladattaessa tallennusta:", error);
-                localStorage.removeItem('YATZY_V18_TURNAMENTTI');
+                localStorage.removeItem('YATZY_V19_TURNAMENTTI');
             }
         }
 
         function clearGame() { if (confirm("Nollaa kaikki ja aloita täysin alusta?")) { localStorage.clear(); location.reload(); } }
-        
         window.onload = loadGame;
     </script>
 </body>
