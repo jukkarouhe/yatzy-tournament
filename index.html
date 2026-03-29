@@ -32,23 +32,23 @@
     #reset-btn { background: #e74c3c; width: 100%; margin-top: 20px; opacity: 0.8; font-size: 1.1rem; }
 
     .table-wrapper { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: #fff; }
-    table { width: 100%; border-collapse: collapse; min-width: 350px; }
-    th, td { border: 1px solid #bbb; padding: 8px 4px; text-align: center; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; min-width: 250px; }
+    th, td { border: 1px solid #bbb; padding: 5px 2px; text-align: center; font-size: 12px; }
     th { background: var(--primary); color: white; cursor: pointer; }
     
     th.active-p-header { background: #27ae60 !important; border-bottom: 3px solid #1e8449; }
-    .row-label { text-align: left; padding-left: 10px; font-weight: bold; background: #f8f9fa !important; min-width: 120px; position: sticky; left: 0; z-index: 5; }
+    .row-label { text-align: left; padding-left: 4px; padding-right: 2px; font-weight: bold; background: #f8f9fa !important; min-width: 75px; max-width: 75px; width: 75px; position: sticky; left: 0; z-index: 5; font-size: 11px; }
     
     .col-cell { background: var(--inactive); transition: background 0.3s; }
     .active-col { background: var(--active) !important; }
     
     .score-input {
-        width: 50px;
-        height: 38px;
+        width: 40px;
+        height: 32px;
         text-align: center;
         border: 1px solid #999;
         border-radius: 4px;
-        font-size: 18px;
+        font-size: 14px;
         font-weight: bold;
         font-family: Verdana, Geneva, sans-serif;
         background: white;
@@ -101,7 +101,7 @@
     </div>
     <button id="next-round-btn" onclick="archiveRound()">Tallenna kierros &amp; Nollaa tulostaulu</button>
     <div id="history-section" style="display:none;">
-        <p style="text-align:center; font-weight:bold; margin-bottom: 10px;">TURNAUKSEN KOKONAISTILANNE</p>
+        <p style="text-align:center; font-weight:bold; margin-bottom: 10px;">TURNAMENTIN KOKONAISTILANNE</p>
         <div class="table-wrapper">
             <table>
                 <thead><tr id="hist-header"></tr></thead>
